@@ -1,83 +1,40 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+NETMASK = "21"
+BOX = "ubuntu/focal64"
+K8S_VERSION = "1.24.0-00"
+
+cluster = {
+  "master" => { :ip => "192.168.56.10", :cpus => 2, :mem => 2048, :init => "/vagrant/scripts/setup-master.sh", :env => { "MASTERIP" => "192.168.56.10", "POD_CIDR" => "10.244.0.0/16" } },
+  "worker1" => { :ip => "192.168.56.20", :cpus => 2, :mem => 2048, :init => "/vagrant/tmp/join.sh", :env => {} },
+  "worker2" => { :ip => "192.168.56.30", :cpus => 2, :mem => 2048, :init => "/vagrant/tmp/join.sh", :env => {} },
+  "worker3" => { :ip => "192.168.56.40", :cpus => 2, :mem => 2048, :init => "/vagrant/tmp/join.sh", :env => {} },
+}
+
 Vagrant.configure("2") do |config|
-  config.vm.define "master" do |master|
-    master.vm.box = "bento/ubuntu-18.04"
-    master.vm.provider "hyperv" do |hv|
-      hv.vmname = "K8s-master"
-      hv.memory = 2048
-      hv.maxmemory = 4096
-      hv.cpus = 2
-      hv.linked_clone = true
+  cluster.each_with_index do |(hostname, info), index|
+    config.vm.define hostname do |node|
+      if hostname == "master"
+        node.vm.network "forwarded_port", guest: 6443, host: 6443
+        node.vm.synced_folder ".kube", "/home/vagrant/.kube", create: true
+        node.vm.synced_folder "manifests", "/etc/kubernetes/manifests", create: true
+      end
+
+      node.vm.hostname = hostname
+      node.vm.network "private_network", ip: info[:ip], netmask: NETMASK, hostname: true
+      node.vm.box = BOX
+      node.vm.provider "virtualbox" do |hv|
+        hv.name = hostname
+        hv.memory = info[:mem]
+        hv.cpus = info[:cpus]
+        hv.linked_clone = true
+      end
+
+      node.vm.provision "shell", path: "scripts/disable-swap.sh"
+      node.vm.provision "shell", path: "scripts/install-containerd.sh"
+      node.vm.provision "shell", path: "scripts/install-k8s.sh", env: { "K8S_VERSION" => K8S_VERSION }
+      node.vm.provision "shell", inline: "bash #{info[:init]}", env: info[:env]
     end
-    master.vm.synced_folder ".", "/vagrant", type: "rsync",
-      rsync__exclude: ".git/"
-
-    master.vm.hostname = "master.localdomain"
-    master.vm.provision "shell", path: "disable-swap.sh"
-    master.vm.provision "shell", path: "install-docker.sh"
-    master.vm.provision "shell", path: "install-k8s.sh"
-    master.vm.provision "shell", path: "setup-master.sh"
-  end
-
-  config.vm.define "nodea" do |nodea|
-    nodea.vm.box = "bento/ubuntu-18.04"
-    nodea.vm.provider "hyperv" do |hv|
-      hv.vmname = "K8s-nodea"
-      hv.memory = 2048
-      hv.maxmemory = 4096
-      hv.cpus = 2
-      hv.linked_clone = true
-    end
-    nodea.vm.synced_folder ".", "/vagrant", type: "rsync",
-      rsync__exclude: ".git/"
-
-    nodea.vm.hostname = "nodea.localdomain"
-
-    nodea.vm.provision "shell", path: "disable-swap.sh"
-    nodea.vm.provision "shell", path: "install-docker.sh"
-    nodea.vm.provision "shell", path: "install-k8s.sh"
-    nodea.vm.provision "shell", inline: "sh /vagrant/tmp/join.sh"
-  end
-
-  config.vm.define "nodeb" do |nodeb|
-    nodeb.vm.box = "bento/ubuntu-18.04"
-    nodeb.vm.provider "hyperv" do |hv|
-      hv.vmname = "K8s-nodeb"
-      hv.memory = 2048
-      hv.maxmemory = 4096
-      hv.cpus = 2
-      hv.linked_clone = true
-    end
-    nodeb.vm.synced_folder ".", "/vagrant", type: "rsync",
-      rsync__exclude: ".git/"
-
-    nodeb.vm.hostname = "nodeb.localdomain"
-
-    nodeb.vm.provision "shell", path: "disable-swap.sh"
-    nodeb.vm.provision "shell", path: "install-docker.sh"
-    nodeb.vm.provision "shell", path: "install-k8s.sh"
-    nodeb.vm.provision "shell", inline: "sh /vagrant/tmp/join.sh"
-  end
-
-  config.vm.define "nodec" do |nodec|
-    nodec.vm.box = "bento/ubuntu-18.04"
-    nodec.vm.provider "hyperv" do |hv|
-      hv.vmname = "K8s-nodec"
-      hv.memory = 2048
-      hv.maxmemory = 4096
-      hv.cpus = 2
-      hv.linked_clone = true
-    end
-    nodec.vm.synced_folder ".", "/vagrant", type: "rsync",
-      rsync__exclude: ".git/"
-
-    nodec.vm.hostname = "nodec.localdomain"
-
-    nodec.vm.provision "shell", path: "disable-swap.sh"
-    nodec.vm.provision "shell", path: "install-docker.sh"
-    nodec.vm.provision "shell", path: "install-k8s.sh"
-    nodec.vm.provision "shell", inline: "sh /vagrant/tmp/join.sh"
   end
 end

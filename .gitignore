@@ -1,5 +1,7 @@
-.vagrant/*
+.vagrant
 *~
 ~*
-.kube/
-tmp/
+.kube
+tmp
+containerd
+manifests
