@@ -6,7 +6,7 @@ apt update
 apt install -y apt-transport-https ca-certificates curl kubelet=$K8S_VERSION kubeadm=$K8S_VERSION kubectl=$K8S_VERSION
 apt-mark hold kubelet kubeadm kubectl
 
-systemctl enable --now kubelet
+systemctl enable kubelet
 
 cat <<EOF | tee /etc/modules-load.d/k8s.conf
 overlay

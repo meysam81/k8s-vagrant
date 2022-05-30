@@ -10,8 +10,12 @@ cp /vagrant/configs/containerd/config.toml /etc/containerd/config.toml
 if [[ -d /vagrant/containerd ]]; then
     copy_binaries /vagrant/containerd/bin/
 else
-    wget https://github.com/containerd/containerd/releases/download/v1.6.4/containerd-1.6.4-linux-amd64.tar.gz
+    wget -q https://github.com/containerd/containerd/releases/download/v1.6.4/containerd-1.6.4-linux-amd64.tar.gz
+    wget -qLO runc https://github.com/opencontainers/runc/releases/download/v1.1.2/runc.amd64
+
     tar xvf containerd-1.6.4-linux-amd64.tar.gz -C /tmp/
+    mv runc /tmp/bin
+
     copy_binaries /tmp/bin/
 fi
 
