@@ -18,7 +18,6 @@ Vagrant.configure("2") do |config|
       if hostname == "master"
         node.vm.network "forwarded_port", guest: 6443, host: 6443
         node.vm.synced_folder ".kube", "/home/vagrant/.kube", create: true
-        node.vm.synced_folder "manifests", "/etc/kubernetes/manifests", create: true
       end
 
       node.vm.hostname = hostname
